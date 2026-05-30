@@ -898,7 +898,7 @@ fn render_readback(sheet: &Checksheet, path: &Path) -> Result<()> {
 }
 
 fn write_yaml(path: &Path, sheet: &Checksheet) -> Result<()> {
-    let raw = serde_yaml::to_string(sheet)?;
+    let raw = annotate_scanner_false_positives(serde_yaml::to_string(sheet)?);
     write_text(path, &raw)
 }
 
@@ -918,6 +918,13 @@ fn generated_at() -> String {
         .map(|duration| duration.as_secs())
         .unwrap_or_default();
     format!("unix:{seconds}")
+}
+
+fn annotate_scanner_false_positives(raw: String) -> String {
+    raw.replace(
+        "criterion_key: vulnerabilities_fixed_60_days\n",
+        "criterion_key: vulnerabilities_fixed_60_days # gitleaks:allow\n",
+    )
 }
 
 #[cfg(test)]
@@ -946,5 +953,11 @@ mod tests {
     fn validates_fixture_catalog() {
         let catalog = read_catalog(Path::new(DEFAULT_CATALOG)).expect("catalog should parse");
         validate_catalog(&catalog).expect("catalog should validate");
+    }
+
+    #[test]
+    fn annotates_known_criterion_false_positive() {
+        let raw = "criterion_key: vulnerabilities_fixed_60_days\n";
+        assert!(annotate_scanner_false_positives(raw.into()).contains("gitleaks:allow"));
     }
 }
