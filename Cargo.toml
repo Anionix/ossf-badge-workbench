@@ -1,0 +1,21 @@
+[package]
+name = "ossf-badge-workbench"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Unofficial OpenSSF Best Practices badge evidence and proposal workbench"
+repository = "https://github.com/Anionix/ossf-badge-workbench"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+csv = "1.3"
+html-escape = "0.2"
+percent-encoding = "2.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+ureq = "2.12"
+
+[dev-dependencies]
+tempfile = "3.10"

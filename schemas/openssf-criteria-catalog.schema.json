@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/openssf-criteria-catalog.schema.json",
+  "title": "OpenSSF criteria catalog",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "criteria"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "track",
+          "level",
+          "category",
+          "evidence_type",
+          "manual_proof_required",
+          "safe_default_decision",
+          "edit_path",
+          "autofill_rule_id"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "track": {
+            "enum": [
+              "metal",
+              "osps"
+            ]
+          },
+          "level": {
+            "enum": [
+              "passing",
+              "silver",
+              "gold",
+              "baseline-1",
+              "baseline-2",
+              "baseline-3"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "manual_proof_required": {
+            "enum": [
+              "yes",
+              "no"
+            ]
+          },
+          "safe_default_decision": {
+            "enum": [
+              "accept",
+              "revise",
+              "keep_unknown",
+              "keep_unmet",
+              "keep_na",
+              "defer"
+            ]
+          },
+          "edit_path": {
+            "type": "string",
+            "pattern": "^(passing|silver|gold|baseline-1|baseline-2|baseline-3)/edit$"
+          },
+          "autofill_rule_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
