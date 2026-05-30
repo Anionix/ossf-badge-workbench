@@ -15,6 +15,7 @@ cargo run -- fill \
   --old-ref agent-ready-repo-template-spec \
   --old-ref agent-ready-repo-template \
   --old-ref agent-ready-repoーtemplate \
+  --signed-release-version v0.1.2 \
   --output docs/openssf-checksheet-12855.yml
 ```
 

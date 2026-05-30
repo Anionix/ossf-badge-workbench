@@ -46,6 +46,8 @@ enum Command {
         badge_level: String,
         #[arg(long = "old-ref")]
         old_refs: Vec<String>,
+        #[arg(long)]
+        signed_release_version: Option<String>,
         #[arg(long, default_value = DEFAULT_TEMPLATE)]
         template: PathBuf,
         #[arg(long, default_value = DEFAULT_CATALOG)]
@@ -217,6 +219,7 @@ fn main() -> Result<()> {
             homepage_url,
             badge_level,
             old_refs,
+            signed_release_version,
             template,
             catalog,
             output,
@@ -228,6 +231,7 @@ fn main() -> Result<()> {
             homepage_url,
             badge_level,
             old_refs,
+            signed_release_version,
             template,
             catalog,
             output,
@@ -245,6 +249,7 @@ struct FillArgs {
     homepage_url: String,
     badge_level: String,
     old_refs: Vec<String>,
+    signed_release_version: Option<String>,
     template: PathBuf,
     catalog: PathBuf,
     output: PathBuf,
@@ -331,14 +336,26 @@ fn fill_command(args: FillArgs) -> Result<()> {
         } else {
             save_state_for(stale, &criterion, &decision)
         };
-        let target_justification = if is_gold_social_blocker(&key) {
+        let signed_release_version = args
+            .signed_release_version
+            .as_deref()
+            .filter(|_| key == "signed_releases");
+        let target_justification = if let Some(version) = signed_release_version {
+            signed_release_justification(version, &args.repo_url)
+        } else if is_gold_social_blocker(&key) {
             gold_blocker_justification(&key, &args.repo_url)
         } else if stale {
             current_justification.replace_old_refs(&args.old_refs, &args.repo_url)
         } else {
             current_justification.clone()
         };
-        let evidence_url = if is_gold_social_blocker(&key) {
+        let evidence_url = if let Some(version) = signed_release_version {
+            format!(
+                "{}/releases/tag/{}",
+                args.repo_url.trim_end_matches('/'),
+                version
+            )
+        } else if is_gold_social_blocker(&key) {
             format!(
                 "{}/blob/main/GOVERNANCE.md",
                 args.repo_url.trim_end_matches('/')
@@ -748,6 +765,13 @@ fn gold_blocker_justification(key: &str, target_repo_url: &str) -> String {
     }
 }
 
+fn signed_release_justification(version: &str, target_repo_url: &str) -> String {
+    let repo_url = target_repo_url.trim_end_matches('/');
+    format!(
+        "Release artifacts for {version} and later are signed with Sigstore keyless Cosign bundles and documented verification instructions: {repo_url}/blob/main/docs/release-signing.md {repo_url}/blob/main/.github/workflows/release.yml {repo_url}/releases/tag/{version}"
+    )
+}
+
 fn save_state_for(stale: bool, criterion: &CatalogCriterion, decision: &str) -> String {
     if criterion.manual_proof_required == "yes" || decision == "defer" {
         "deferred".into()
@@ -1057,5 +1081,14 @@ mod tests {
             replaced,
             "https://github.com/Anionix/agent-ready-template/blob/main/README.md"
         );
+    }
+
+    #[test]
+    fn builds_signed_release_override_evidence() {
+        let justification =
+            signed_release_justification("v0.1.2", "https://github.com/Anionix/example/");
+        assert!(justification.contains("Release artifacts for v0.1.2 and later"));
+        assert!(justification.contains("https://github.com/Anionix/example/releases/tag/v0.1.2"));
+        assert!(!justification.contains("v0.1.1"));
     }
 }
