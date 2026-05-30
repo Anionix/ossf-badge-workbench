@@ -1104,6 +1104,7 @@ fn proposal_url(project_id: &str, anchor_row: &Row, rows: &[Row]) -> String {
             row.target_justification.clone(),
         ));
         overrides.push(format!("{param_key}_status"));
+        overrides.push(format!("{param_key}_justification"));
     }
     params.push(("overrides".into(), overrides.join(",")));
     url.push_str(
@@ -1557,12 +1558,12 @@ mod tests {
     #[test]
     fn proposal_url_uses_internal_osps_keys_and_status_overrides() {
         let mut row = test_row("OSPS-AC-03.01", "Met", "yes", "accept");
+        row.current_status = "Met".into();
         row.target_justification = "Branch protection enabled on main.".into();
         let url = proposal_url("42", &row, std::slice::from_ref(&row));
         assert!(url.contains("osps_ac_03_01_status=Met"));
         assert!(url.contains("osps_ac_03_01_justification=Branch"));
-        assert!(url.contains("overrides=osps_ac_03_01_status"));
-        assert!(!url.contains("overrides=osps_ac_03_01_status%2Cosps_ac_03_01_justification"));
+        assert!(url.contains("overrides=osps_ac_03_01_status%2Cosps_ac_03_01_justification"));
     }
 
     #[test]
