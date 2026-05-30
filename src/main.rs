@@ -319,7 +319,6 @@ fn fill_command(args: FillArgs) -> Result<()> {
             .unwrap_or_else(|| fallback_criterion(&key));
         let stale = contains_old_ref(&current_justification, &args.old_refs);
         let decision = decision_for(&current_status, stale, &criterion);
-        let save_state = save_state_for(stale, &criterion, &decision);
         let target_status = if is_gold_social_blocker(&key) {
             "Unmet".to_string()
         } else if criterion.manual_proof_required == "yes" {
@@ -327,12 +326,25 @@ fn fill_command(args: FillArgs) -> Result<()> {
         } else {
             current_status.clone()
         };
-        let target_justification = if stale {
+        let save_state = if target_status != current_status {
+            "drafted".into()
+        } else {
+            save_state_for(stale, &criterion, &decision)
+        };
+        let target_justification = if is_gold_social_blocker(&key) {
+            gold_blocker_justification(&key, &args.repo_url)
+        } else if stale {
             current_justification.replace_old_refs(&args.old_refs, &args.repo_url)
-        } else if is_gold_social_blocker(&key) && current_justification.is_empty() {
-            "Gold social/governance criterion is not claimed as satisfied by the conservative autofill.".into()
         } else {
             current_justification.clone()
+        };
+        let evidence_url = if is_gold_social_blocker(&key) {
+            format!(
+                "{}/blob/main/GOVERNANCE.md",
+                args.repo_url.trim_end_matches('/')
+            )
+        } else {
+            evidence_url_for(&key, map)
         };
         let save_step = save_step_for_level(&criterion.level);
         rows.push(Row {
@@ -347,7 +359,7 @@ fn fill_command(args: FillArgs) -> Result<()> {
             current_justification,
             target_justification,
             evidence_type: criterion.evidence_type.clone(),
-            evidence_url: evidence_url_for(&key, map),
+            evidence_url,
             stale_reference: yes_no(stale),
             manual_proof_required: criterion.manual_proof_required.clone(),
             save_state,
@@ -708,6 +720,32 @@ fn is_gold_social_blocker(key: &str) -> bool {
     )
 }
 
+fn gold_blocker_justification(key: &str, target_repo_url: &str) -> String {
+    let governance_url = format!(
+        "{}/blob/main/GOVERNANCE.md",
+        target_repo_url.trim_end_matches('/')
+    );
+    let maintainer_url = format!(
+        "{}/blob/main/MAINTAINERS.md",
+        target_repo_url.trim_end_matches('/')
+    );
+    match key {
+        "bus_factor" => format!(
+            "Current bus factor is one. Private recovery supports continuity but is not claimed as a bus factor of two: {maintainer_url} {governance_url}"
+        ),
+        "contributors_unassociated" => format!(
+            "The project does not yet have two significant unaffiliated contributors. This remains a Gold blocker: {governance_url}"
+        ),
+        "code_review_standards" => format!(
+            "Solo-maintainer hybrid mode is documented, but the project does not yet claim full code-review standards covering review conduct, checked criteria, acceptance criteria, and enforcement evidence. This remains a Gold blocker: {governance_url}"
+        ),
+        "two_person_review" => format!(
+            "Current operation is solo-maintainer hybrid mode. Pull requests and required checks are used, but normal changes do not require separate human approval. This remains a Gold blocker: {governance_url} {maintainer_url}"
+        ),
+        _ => "Gold social/governance criterion is not claimed as satisfied by the conservative autofill.".into(),
+    }
+}
+
 fn save_state_for(stale: bool, criterion: &CatalogCriterion, decision: &str) -> String {
     if criterion.manual_proof_required == "yes" || decision == "defer" {
         "deferred".into()
@@ -1008,6 +1046,8 @@ mod tests {
             "agent-ready-repo-template-spec".into(),
             "Anionix/agent-ready-repo-template-spec".into(),
             "https://github.com/Anionix/agent-ready-repo-template-spec".into(),
+            "agent-ready-repo-template".into(),
+            "agent-ready-repoーtemplate".into(),
         ];
         let replaced =
             current.replace_old_refs(&old_refs, "https://github.com/Anionix/agent-ready-template");

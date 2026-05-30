@@ -30,7 +30,11 @@ cargo run -- fill \
   --repo-url https://github.com/Anionix/agent-ready-template \
   --homepage-url https://github.com/Anionix/agent-ready-template \
   --badge-level silver \
+  --old-ref https://github.com/Anionix/agent-ready-repo-template-spec \
+  --old-ref Anionix/agent-ready-repo-template-spec \
   --old-ref agent-ready-repo-template-spec \
+  --old-ref agent-ready-repo-template \
+  --old-ref agent-ready-repoーtemplate \
   --output docs/openssf-checksheet-12855.yml
 ```
 
