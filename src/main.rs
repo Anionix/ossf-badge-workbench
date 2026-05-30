@@ -320,13 +320,17 @@ fn fill_command(args: FillArgs) -> Result<()> {
         let stale = contains_old_ref(&current_justification, &args.old_refs);
         let decision = decision_for(&current_status, stale, &criterion);
         let save_state = save_state_for(stale, &criterion, &decision);
-        let target_status = if criterion.manual_proof_required == "yes" {
+        let target_status = if is_gold_social_blocker(&key) {
+            "Unmet".to_string()
+        } else if criterion.manual_proof_required == "yes" {
             "?".to_string()
         } else {
             current_status.clone()
         };
         let target_justification = if stale {
             current_justification.replace_old_refs(&args.old_refs, &args.repo_url)
+        } else if is_gold_social_blocker(&key) && current_justification.is_empty() {
+            "Gold social/governance criterion is not claimed as satisfied by the conservative autofill.".into()
         } else {
             current_justification.clone()
         };
@@ -651,15 +655,38 @@ trait ReplaceOldRefs {
 impl ReplaceOldRefs for str {
     fn replace_old_refs(&self, old_refs: &[String], new_ref: &str) -> String {
         let mut value = self.to_string();
-        for old_ref in old_refs {
-            value = value.replace(old_ref, new_ref);
+        let mut sorted_refs = old_refs.to_vec();
+        sorted_refs.sort_by_key(|old_ref| std::cmp::Reverse(old_ref.len()));
+        for old_ref in sorted_refs {
+            let replacement = replacement_for_old_ref(&old_ref, new_ref);
+            value = value.replace(&old_ref, &replacement);
         }
         value
     }
 }
 
+fn replacement_for_old_ref(old_ref: &str, target_repo_url: &str) -> String {
+    if old_ref.starts_with("https://") || old_ref.starts_with("http://") {
+        target_repo_url.to_string()
+    } else if old_ref.contains('/') {
+        target_repo_url
+            .trim_start_matches("https://github.com/")
+            .trim_start_matches("http://github.com/")
+            .to_string()
+    } else {
+        target_repo_url
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or(target_repo_url)
+            .to_string()
+    }
+}
+
 fn decision_for(status: &str, stale: bool, criterion: &CatalogCriterion) -> String {
-    if criterion.manual_proof_required == "yes" {
+    if is_gold_social_blocker(&criterion.key) {
+        "keep_unmet".into()
+    } else if criterion.manual_proof_required == "yes" {
         "defer".into()
     } else if stale {
         "revise".into()
@@ -672,6 +699,13 @@ fn decision_for(status: &str, stale: bool, criterion: &CatalogCriterion) -> Stri
     } else {
         criterion.safe_default_decision.clone()
     }
+}
+
+fn is_gold_social_blocker(key: &str) -> bool {
+    matches!(
+        key,
+        "bus_factor" | "contributors_unassociated" | "code_review_standards" | "two_person_review"
+    )
 }
 
 fn save_state_for(stale: bool, criterion: &CatalogCriterion, decision: &str) -> String {
@@ -921,6 +955,11 @@ fn generated_at() -> String {
 }
 
 fn annotate_scanner_false_positives(raw: String) -> String {
+    let raw = raw
+        .replace(": yes\n", ": 'yes'\n")
+        .replace(": no\n", ": 'no'\n")
+        .replace("- yes\n", "- 'yes'\n")
+        .replace("- no\n", "- 'no'\n");
     raw.replace(
         "criterion_key: vulnerabilities_fixed_60_days\n",
         "criterion_key: vulnerabilities_fixed_60_days # gitleaks:allow\n",
@@ -959,5 +998,22 @@ mod tests {
     fn annotates_known_criterion_false_positive() {
         let raw = "criterion_key: vulnerabilities_fixed_60_days\n";
         assert!(annotate_scanner_false_positives(raw.into()).contains("gitleaks:allow"));
+    }
+
+    #[test]
+    fn replaces_old_refs_without_malformed_absolute_urls() {
+        let current =
+            "https://github.com/Anionix/agent-ready-repo-template-spec/blob/main/README.md";
+        let old_refs = vec![
+            "agent-ready-repo-template-spec".into(),
+            "Anionix/agent-ready-repo-template-spec".into(),
+            "https://github.com/Anionix/agent-ready-repo-template-spec".into(),
+        ];
+        let replaced =
+            current.replace_old_refs(&old_refs, "https://github.com/Anionix/agent-ready-template");
+        assert_eq!(
+            replaced,
+            "https://github.com/Anionix/agent-ready-template/blob/main/README.md"
+        );
     }
 }
