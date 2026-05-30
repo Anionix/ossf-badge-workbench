@@ -343,6 +343,8 @@ fn fill_command(args: FillArgs) -> Result<()> {
                 "{}/blob/main/GOVERNANCE.md",
                 args.repo_url.trim_end_matches('/')
             )
+        } else if stale {
+            evidence_url_for(&key, map).replace_old_refs(&args.old_refs, &args.repo_url)
         } else {
             evidence_url_for(&key, map)
         };
