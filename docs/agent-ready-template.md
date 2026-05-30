@@ -25,3 +25,12 @@ readback JSON under `.cache/` unless they are intentionally added as examples.
 
 Readback rows may reuse a criterion-like key such as `homepage_url`; tooling
 treats `track + criterion_key` as the stable row identity.
+
+Proposal URLs and `.bestpractices.json` exports use lowercase internal OSPS
+keys such as `osps_ac_03_01_status`, even when OpenSSF readback JSON displays
+the same criterion as `OSPS-AC-03.01_status`.
+
+Do not depend on query-string `?` reset behavior. Upstream prose currently
+describes `?` as reset-to-unknown for URL proposals, while the controller path
+rejects parsed unknown proposal statuses. This workbench defaults to omitting
+unknown rows from proposal URLs and repository JSON exports.

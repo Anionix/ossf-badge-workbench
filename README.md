@@ -48,6 +48,23 @@ cargo run -- proposals \
   --out .cache/openssf/12855/proposals.md
 ```
 
+By default, proposal URLs omit rows whose target status is `?`. The upstream
+automation proposal docs describe query-string `?` as a reset-to-unknown value,
+but current controller behavior rejects parsed unknown URL proposals. This tool
+therefore uses a conservative no-reset default; pass `--include-unknown` only
+when you intentionally want to inspect explicit unknown proposals.
+
+Export repository automation JSON for checked or accepted rows:
+
+```sh
+cargo run -- export bestpractices-json \
+  --input docs/openssf-checksheet-12855.yml \
+  --out .cache/openssf/12855/.bestpractices.json
+```
+
+The export uses proposal-style/internal field names such as
+`osps_ac_03_01_status` and omits unknown `?` rows.
+
 Generate CSV, HTML, and readback JSON:
 
 ```sh
@@ -56,12 +73,32 @@ cargo run -- render \
   --out-dir .cache/openssf/12855
 ```
 
+Compare a checksheet against current project JSON readback:
+
+```sh
+cargo run -- compare-readback \
+  --input docs/openssf-checksheet-12855.yml \
+  --project-json-file tests/fixtures/bestpractices-12855.json
+```
+
+Refresh OSPS baseline criteria foundations from upstream:
+
+```sh
+cargo run -- sync-upstream \
+  --catalog data/openssf/criteria-catalog.yml \
+  --output data/openssf/criteria-catalog.yml
+```
+
 ## Conservative Autofill
 
 The tool carries forward current readback values unless a row needs review.
 Old repository references become `review_decision: revise`. Private or
 admin-only evidence becomes `save_state: deferred`. Gold social/process claims
 must remain unclaimed unless the project really satisfies them.
+
+OSPS readback/display keys such as `OSPS-AC-03.01_status` are normalized to
+proposal and repository-automation keys such as `osps_ac_03_01_status` at export
+and proposal boundaries.
 
 ## Repository Layout
 
